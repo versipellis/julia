@@ -961,6 +961,8 @@ static int subtype(jl_value_t *x, jl_value_t *y, jl_stenv_t *e, int param)
                 if (yy) record_var_occurrence(yy, e, param);
                 if (yr) {
                     if (xx) record_var_occurrence(xx, e, param);
+                    if (xx->lb == jl_bottom_type)
+                        return 1;  // allow Bottom <: non-type
                     return subtype(xx->lb, yy->ub, e, 0);
                 }
                 return var_lt((jl_tvar_t*)x, y, e, param);
@@ -1779,7 +1781,10 @@ static jl_value_t *finish_unionall(jl_value_t *res JL_MAYBE_UNROOTED, jl_varbind
     jl_tvar_t *newvar = vb->var;
     JL_GC_PUSH2(&res, &newvar);
     // try to reduce var to a single value
-    if (obviously_egal(vb->lb, vb->ub)) {
+    if (jl_is_long(vb->ub) && jl_is_typevar(vb->lb)) {
+        varval = vb->ub;
+    }
+    else if (obviously_egal(vb->lb, vb->ub)) {
         // given x<:T<:x, substitute x for T
         varval = vb->ub;
     }
